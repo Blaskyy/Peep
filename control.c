@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <errno.h>
 #include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
@@ -7,30 +8,23 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
+#define PORT 1235
+#define LENGTH  512
+
 int main(int argc, char **argv){
-    int x, z;
-    char *host_ip = "127.0.0.1";
-    short host_port = 1235;
+    int x, z, sockfd;
     char *remote_ip = "127.0.0.1";
-    short remote_port = 1234;
+    char datagram[LENGTH];
+    int length = LENGTH;
 
-    int host_sock, remote_sock;
-    char datagram[512];
-    int remote_len = 512;
-
-    struct sockaddr_in host_add;
+    struct sockaddr_in control_add;
     struct sockaddr_in remote_add;
 
-    host_sock = socket(AF_INET, SOCK_DGRAM, 0);
-
-    bzero(&host_add, sizeof(host_add));
-    host_add.sin_family = AF_INET;
-    host_add.sin_port = htons(host_port);
-    host_add.sin_addr.s_addr = inet_addr(host_ip);
-
-    z = bind(host_sock, (struct sockaddr *)&host_add, sizeof(host_add));
-    if (z == -1)
-        puts("bind error");
+    sockfd = socket(AF_INET, SOCK_DGRAM, 0);
+    bzero(&remote_add, sizeof(remote_add));
+    remote_add.sin_family = AF_INET;
+    remote_add.sin_port = htons(PORT);
+    remote_add.sin_addr.s_addr = inet_addr(remote_ip);
 
     while(1) {
         printf("Command: ");
@@ -44,34 +38,25 @@ int main(int argc, char **argv){
             break;
         }
 
-        remote_sock = socket(AF_INET, SOCK_DGRAM, 0);
-        bzero(&remote_add, sizeof(remote_add));
-        remote_add.sin_family = AF_INET;
-        remote_add.sin_port = htons(remote_port);
-        remote_add.sin_addr.s_addr = htonl(INADDR_ANY);
-        // remote_add.sin_addr.s_addr = inet_addr(remote_ip);
-
         // Here the command is sent to remote machine through UDP
-        x = sendto(remote_sock, datagram, strlen(datagram), 0, (struct sockaddr *)&remote_add, sizeof(remote_add));
+        x = sendto(sockfd, datagram, strlen(datagram), 0, (struct sockaddr *)&remote_add, sizeof(remote_add));
         if(x != -1){
             puts("Command sent. Waiting for response...");
         }else
-            puts("sendto error");
-        close(remote_sock);
+            printf("ERR_sendto: %s\n", strerror(errno));
         bzero(datagram, 512);
 
         // Here the output of the command is collected from the remote machine
         do {
             bzero(datagram, sizeof(datagram));
-            z = recvfrom(host_sock, datagram, 512, 0, (struct sockaddr *)&remote_add, &remote_len);
+            z = recvfrom(sockfd, datagram, 512, 0, (struct sockaddr *)&control_add, &length);
             if (z == -1)
-                puts("recvfrom error");
+                printf("ERR_recvfrom: %s\n", strerror(errno));
 
             datagram[z] = 0;
             printf("%s", datagram);
         }while(strncmp(datagram, "___EOF___\n", 10) != 0);
-
     }
-    close(host_sock);
+    close(sockfd);
     return 0;
 }
