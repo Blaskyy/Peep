@@ -42,6 +42,7 @@ int recvOnline() {
 
 int main(int argc, char const *argv[]){
     int x, z;
+    char command[16], tranfile[256], savefile[256];
 
     sockfd = socket(AF_INET, SOCK_DGRAM, 0);
     bzero(&control_add, sizeof(control_add));
@@ -82,6 +83,33 @@ int main(int argc, char const *argv[]){
             printf("ERR_sendto: %s\n", strerror(errno));
             exit(-1);
         }
+
+        //Here the transfer file
+        sscanf(datagram, "%[^ ]", command);
+        printf("%s",command);
+        if (strcmp(command, "tran") == 0) {
+            sscanf(datagram, "%*s %s %s", tranfile, savefile);
+            printf("Transfer file: %s, save to %s\n", tranfile, savefile);
+            FILE *fp;
+            fp = fopen(savefile, "w");
+            do {
+                bzero(datagram, sizeof(datagram));
+                z = recvfrom(sockfd, datagram, LENGTH, 0, (struct sockaddr *)&remote_add, &length);
+                if (z == -1) {
+                    printf("ERR_recvfrom: %s\n", strerror(errno));
+                    exit(-1);
+                }
+                datagram[z] = 0;
+                if (strncmp(datagram, "___EOF___\n", 10) == 0){
+                    break;
+                }
+                fputs(datagram, fp);
+            }while(strncmp(datagram, "___EOF___\n", 10) != 0);
+
+            fclose(fp);
+            continue;
+        }
+
         bzero(datagram, LENGTH);
 
         // Here the output of the command is collected from the remote machine

