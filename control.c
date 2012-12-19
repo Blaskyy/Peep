@@ -65,7 +65,7 @@ int main(int argc, char const *argv[]){
     // Waiting for the target to send on-line information
     recvOnline(sockfd);
     while(1) {
-        printf("\e[1;36m=> \e[0m");
+        printf("\n\e[1;36m=> \e[0m");
         bzero(datagram, LENGTH);
         fgets(datagram, LENGTH, stdin);
 
