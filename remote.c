@@ -60,7 +60,7 @@ int main(int argc, char const *argv[]) {
     int x, z, ret, filelen;
     char *control_ip = "127.0.0.1";
     char command[16], path[128], filename[256];
-	char endcmd[10] = "___EOF___\n";
+    char endcmd[10] = "___EOF___\n";
     pthread_t thread;
 
     FILE *fp;  // It will open a stream for the output of command

@@ -51,7 +51,7 @@ void recvOnline() {
 
 int main(int argc, char const *argv[]){
     int x, z;
-	char command[16], tranfile[256], savefile[256];
+    char command[16], tranfile[256], savefile[256];
 
     sockfd = socket(AF_INET, SOCK_DGRAM, 0);
     bzero(&control_add, sizeof(control_add));
@@ -89,7 +89,7 @@ int main(int argc, char const *argv[]){
             printError(2, strerror(errno));
 
         // Here the output of the command is collected from the remote machine
-		sscanf(datagram, "%[^ ]", command);
+        sscanf(datagram, "%[^ ]", command);
         printf("%s",command);
         if (strcmp(command, "tran") == 0) {
             sscanf(datagram, "%*s %s %s", tranfile, savefile);
