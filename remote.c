@@ -9,23 +9,39 @@
 #include <arpa/inet.h>
 #include <pthread.h>
 
-#define PORT 1235
+#define PORT    1235
 #define LENGTH  512
 struct sockaddr_in control_add;
 struct sockaddr_in remote_add;
-static int run = 1;   // Thread running state
+static int run = 1;
 int sockfd;
 int length = LENGTH;
 char datagram[LENGTH];
+
+void printError(int sort, char *err) {
+    switch (sort) {
+        case 0:
+            printf("\e[33mERR_bind:");break;
+        case 1:
+            printf("\e[33mERR_recvfrom:");break;
+        case 2:
+            printf("\e[33mERR_sendto:");break;
+        case 3:
+            printf("\e[33mERR_pthread:");break;
+        default:
+            printf("\e[33mERR:");break;
+    }
+    printf(" %s\n\e[0m", err);
+    exit(-1);
+}
 
 void *start_routine(void *arg) {
     int z;
     while(1) {
         bzero(datagram, LENGTH);
         z = recvfrom(sockfd, datagram, LENGTH, 0, (struct sockaddr *)&control_add, &length);
-        if (z == -1) {
-            printf("ERR_recvfrom: %s\n", strerror(errno));
-        }
+        if (z == -1)
+            printError(1, strerror(errno));
         else if (strcmp(datagram, "ok") == 0) {
             run = 0;
             pthread_exit(0);
@@ -33,20 +49,17 @@ void *start_routine(void *arg) {
     }
 }
 
-int sendOnline() {
+void sendOnline() {
     int x;
     x = sendto(sockfd, "ok", 2, 0, (struct sockaddr *)&control_add, sizeof(control_add));
-    if (x == -1) {
-        printf("ERR_sendto: %s\n", strerror(errno));
-        exit(-1);
-    }
-    return 0;
+    if (x == -1)
+        printError(2, strerror(errno));
 }
 
 int main(int argc, char const *argv[]) {
     int x, z, ret;
     char *control_ip = "127.0.0.1";
-    char command[16], path[128], filename[256];
+    char command[16], path[128];
     pthread_t thread;
 
     FILE *fp;  // it will open a stream for the output of command
@@ -67,10 +80,8 @@ int main(int argc, char const *argv[]) {
             if (run == 1) {
                 puts("Waiting for connection...");
                 ret = pthread_create(&thread, NULL, (void*)start_routine, NULL);
-                if (ret != 0) {
-                    printf("ERR_pthread: %s\n", strerror(errno));
-                    exit(-1);
-                }
+                if (ret != 0)
+                    printError(3, strerror(errno));
             }
             sendOnline();
             run = 2;
@@ -82,10 +93,8 @@ int main(int argc, char const *argv[]) {
 
         // Here we are waiting for receiving command from the control machine
         z = recvfrom(sockfd, datagram, LENGTH, 0, (struct sockaddr *)&control_add, &length);
-        if (z == -1) {
-            printf("ERR_recvfrom: %s\n", strerror(errno));
-            exit(-1);
-        }
+        if (z == -1)
+            printError(1, strerror(errno));
 
         datagram[z] = 0;
         printf("Command:%s", datagram);
@@ -111,11 +120,6 @@ int main(int argc, char const *argv[]) {
         else if (strcmp(command, "tran") == 0) {
             bzero(command, sizeof(command));
             // ...
-            sscanf(datagram, "%*5s%s", filename);
-            strcpy(command, "cat ");
-            strcat(command, filename);
-            fp = popen(command, "r");
-            bzero(command, sizeof(command));
         }else
             fp = popen(datagram, "r");  // opening a stream by executing the command
         bzero(datagram, sizeof(datagram));
@@ -124,20 +128,15 @@ int main(int argc, char const *argv[]) {
         // collecting the output and sending to the control machine
         while(fgets(datagram, sizeof(datagram)-1, fp) != NULL) {
             x = sendto(sockfd, datagram, strlen(datagram), 0, (struct sockaddr *)&control_add, sizeof(control_add));
-            if (x == -1) {
-                printf("ERR_sendto: %s\n", strerror(errno));
-                exit(-1);
-            }
-
+            if (x == -1)
+                printError(2, strerror(errno));
             bzero(datagram, sizeof(datagram));
         }
         // marking the end of output of command
         strcpy(datagram, "___EOF___\n");
         x = sendto(sockfd, datagram, strlen(datagram), 0, (struct sockaddr *)&control_add, sizeof(control_add));
-        if (x == -1) {
-            printf("ERR_sendto:%s\n", strerror(errno));
-            exit(-1);
-        }
+        if (x == -1)
+            printError(2, strerror(errno));
     }
     close(sockfd);
     return 0;

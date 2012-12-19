@@ -8,41 +8,49 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-#define PORT 1235
+#define PORT    1235
 #define LENGTH  512
 struct sockaddr_in control_add;
 struct sockaddr_in remote_add;
-int sockfd;
-int length = LENGTH;
+int sockfd, length = LENGTH;
 char datagram[LENGTH];
 
-int recvOnline() {
+void printError(int sort, char *err) {
+    switch (sort) {
+        case 0:
+            printf("\e[33mERR_bind:");break;
+        case 1:
+            printf("\e[33mERR_recvfrom:");break;
+        case 2:
+            printf("\e[33mERR_sendto:");break;
+        default:
+            printf("\e[33mERR:");break;
+    }
+    printf(" %s\n\e[0m", err);
+    exit(-1);
+}
+
+void recvOnline() {
     int x, z;
 
     puts("Waiting for connection...");
     while(1) {
         bzero(datagram, LENGTH);
         z = recvfrom(sockfd, datagram, LENGTH, 0, (struct sockaddr *)&remote_add, &length);
-        if (z == -1) {
-            printf("ERR_recvfrom: %s\n", strerror(errno));
-            exit(-1);
-        }
+        if (z == -1)
+            printError(1, strerror(errno));
         else if (strcmp(datagram, "ok") == 0) {
             puts("Target is on-line.");
             x = sendto(sockfd, "ok", 2, 0, (struct sockaddr *)&remote_add, sizeof(remote_add));
-            if (x == -1) {
-                printf("ERR_sendto: %s\n", strerror(errno));
-                exit(-1);
-            }
+            if (x == -1)
+                printError(2, strerror(errno));
             break;
         }
     }
-    return 0;
 }
 
 int main(int argc, char const *argv[]){
     int x, z;
-    char command[16], tranfile[256], savefile[256];
 
     sockfd = socket(AF_INET, SOCK_DGRAM, 0);
     bzero(&control_add, sizeof(control_add));
@@ -51,15 +59,13 @@ int main(int argc, char const *argv[]){
     control_add.sin_addr.s_addr = htonl(INADDR_ANY);
 
     z = bind(sockfd, (struct sockaddr *)&control_add, sizeof(control_add));
-    if (z == -1) {
-        printf("ERR_bind: %s\n", strerror(errno));
-        exit(-1);
-    }
+    if (z == -1)
+        printError(0, strerror(errno));
 
     // Waiting for the target to send on-line information
     recvOnline(sockfd);
     while(1) {
-        printf("Command: ");
+        printf("\e[1;36m=> \e[0m");
         bzero(datagram, LENGTH);
         fgets(datagram, LENGTH, stdin);
 
@@ -68,10 +74,8 @@ int main(int argc, char const *argv[]){
         }
         else if (strcmp(datagram, "quit\n") == 0) {
             x = sendto(sockfd, datagram, strlen(datagram), 0, (struct sockaddr *)&remote_add, sizeof(remote_add));
-            if (x == -1) {
-                printf("ERR_sendto: %s\n", strerror(errno));
-                exit(-1);
-            }
+            if (x == -1)
+                printError(2, strerror(errno));
             break;
         }
 
@@ -79,52 +83,23 @@ int main(int argc, char const *argv[]){
         x = sendto(sockfd, datagram, strlen(datagram), 0, (struct sockaddr *)&remote_add, sizeof(remote_add));
         if(x != -1){
             puts("Command sent. Waiting for response...");
-        }else {
-            printf("ERR_sendto: %s\n", strerror(errno));
-            exit(-1);
-        }
-
-        //Here the transfer file
-        sscanf(datagram, "%[^ ]", command);
-        printf("%s",command);
-        if (strcmp(command, "tran") == 0) {
-            sscanf(datagram, "%*s %s %s", tranfile, savefile);
-            printf("Transfer file: %s, save to %s\n", tranfile, savefile);
-            FILE *fp;
-            fp = fopen(savefile, "w");
-            do {
-                bzero(datagram, sizeof(datagram));
-                z = recvfrom(sockfd, datagram, LENGTH, 0, (struct sockaddr *)&remote_add, &length);
-                if (z == -1) {
-                    printf("ERR_recvfrom: %s\n", strerror(errno));
-                    exit(-1);
-                }
-                datagram[z] = 0;
-                if (strncmp(datagram, "___EOF___\n", 10) == 0){
-                    break;
-                }
-                fputs(datagram, fp);
-            }while(strncmp(datagram, "___EOF___\n", 10) != 0);
-
-            fclose(fp);
-            continue;
-        }
-
+            puts("\e[0;30m------------------------------------------------------------\e[0m");
+        }else
+            printError(2, strerror(errno));
         bzero(datagram, LENGTH);
 
         // Here the output of the command is collected from the remote machine
-        do {
+        while(1) {
             bzero(datagram, sizeof(datagram));
             z = recvfrom(sockfd, datagram, LENGTH, 0, (struct sockaddr *)&remote_add, &length);
-            if (z == -1) {
-                printf("ERR_recvfrom: %s\n", strerror(errno));
-                exit(-1);
-            }
-
+            if (z == -1)
+                printError(1, strerror(errno));
             datagram[z] = 0;
+            if (strncmp(datagram, "___EOF___\n", 10) == 0)
+                break;
             printf("%s", datagram);
-        }while(strncmp(datagram, "___EOF___\n", 10) != 0);
+        }
     }
     close(sockfd);
-    return 0;
+    return;
 }
