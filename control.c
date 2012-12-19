@@ -27,7 +27,6 @@ void printError(int sort, char *err) {
             printf("\e[33mERR:");break;
     }
     printf(" %s\n\e[0m", err);
-    exit(-1);
 }
 
 void recvOnline() {
@@ -52,6 +51,7 @@ void recvOnline() {
 int main(int argc, char const *argv[]){
     int x, z;
     char command[16], tranfile[256], savefile[256];
+    char eof[10] = "___EOF___\n";
 
     sockfd = socket(AF_INET, SOCK_DGRAM, 0);
     bzero(&control_add, sizeof(control_add));
@@ -79,6 +79,12 @@ int main(int argc, char const *argv[]){
                 printError(2, strerror(errno));
             break;
         }
+        else if (strcmp(datagram, "sendquit\n") == 0) {
+            x = sendto(sockfd, datagram, strlen(datagram), 0, (struct sockaddr *)&remote_add, sizeof(remote_add));
+            if (x == -1)
+                printError(2, strerror(errno));
+            break;
+        }
 
         // Here the command is sent to remote machine through UDP
         x = sendto(sockfd, datagram, strlen(datagram), 0, (struct sockaddr *)&remote_add, sizeof(remote_add));
@@ -90,7 +96,6 @@ int main(int argc, char const *argv[]){
 
         // Here the output of the command is collected from the remote machine
         sscanf(datagram, "%[^ ]", command);
-        printf("%s",command);
         if (strcmp(command, "tran") == 0) {
             sscanf(datagram, "%*s %s %s", tranfile, savefile);
             printf("Transfer file: %s, save to %s\n", tranfile, savefile);
@@ -103,7 +108,7 @@ int main(int argc, char const *argv[]){
                     printf("ERR_recvfrom: %s\n", strerror(errno));
                     exit(-1);
                 }
-                if(strncmp(datagram, "___EOF___\n", 10) == 0){
+                if(strncmp(datagram, eof, 10) == 0){
                     fclose(fp);
                     break;
                 }
@@ -119,7 +124,7 @@ int main(int argc, char const *argv[]){
             if (z == -1)
                 printError(1, strerror(errno));
             datagram[z] = 0;
-            if (strncmp(datagram, "___EOF___\n", 10) == 0)
+            if (strncmp(datagram, eof, 10) == 0)
                 break;
             printf("%s", datagram);
         }

