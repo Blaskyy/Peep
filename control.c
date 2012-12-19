@@ -9,10 +9,10 @@
 #include <arpa/inet.h>
 
 #define PORT    1235
-#define LENGTH  512
+#define LENGTH  1518
 struct sockaddr_in control_add;
 struct sockaddr_in remote_add;
-int sockfd, length = LENGTH;
+int sockfd, length = sizeof(struct sockaddr_in);
 char datagram[LENGTH];
 
 void printError(int sort, char *err) {
@@ -51,6 +51,7 @@ void recvOnline() {
 
 int main(int argc, char const *argv[]){
     int x, z;
+	char command[16], tranfile[256], savefile[256];
 
     sockfd = socket(AF_INET, SOCK_DGRAM, 0);
     bzero(&control_add, sizeof(control_add));
@@ -86,9 +87,32 @@ int main(int argc, char const *argv[]){
             puts("\e[0;30m------------------------------------------------------------\e[0m");
         }else
             printError(2, strerror(errno));
-        bzero(datagram, LENGTH);
 
         // Here the output of the command is collected from the remote machine
+		sscanf(datagram, "%[^ ]", command);
+        printf("%s",command);
+        if (strcmp(command, "tran") == 0) {
+            sscanf(datagram, "%*s %s %s", tranfile, savefile);
+            printf("Transfer file: %s, save to %s\n", tranfile, savefile);
+            FILE *fp;
+            fp = fopen(savefile, "w");
+            while(1) {
+                bzero(datagram, LENGTH);
+                z = recvfrom(sockfd, datagram, LENGTH, 0, (struct sockaddr *)&remote_add, &length);
+                if (z == -1) {
+                    printf("ERR_recvfrom: %s\n", strerror(errno));
+                    exit(-1);
+                }
+                if(strncmp(datagram, "___EOF___\n", 10) == 0){
+                    fclose(fp);
+                    break;
+                }
+                fwrite(datagram, z, 1, fp);
+            }
+            continue;
+        } //end transfer file
+        bzero(datagram, LENGTH);
+
         while(1) {
             bzero(datagram, sizeof(datagram));
             z = recvfrom(sockfd, datagram, LENGTH, 0, (struct sockaddr *)&remote_add, &length);
