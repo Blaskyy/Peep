@@ -79,7 +79,8 @@ int main(int argc, char const *argv[]){
                 printError(2, strerror(errno));
             break;
         }
-        else if (strcmp(datagram, "sendquit\n") == 0) {
+        // Send quit message
+        else if (strcmp(datagram, "squit\n") == 0) {
             x = sendto(sockfd, datagram, strlen(datagram), 0, (struct sockaddr *)&remote_add, sizeof(remote_add));
             if (x == -1)
                 printError(2, strerror(errno));
