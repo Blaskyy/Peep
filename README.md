@@ -10,8 +10,8 @@ Peep
 * `3.2.0-34-generic.ko`  对应内核编译的文件，可直接加载(Ubuntu 12.04 x64);
 * `2.6.32-38-generic.ko` 对应内核编译的文件，可直接加载(Ubuntu 10.04 x32);
 
-功能介绍
--------
+Description
+-----------
 
 除去可以执行的Shell命令外，还内置了如下命令。
 
@@ -26,8 +26,8 @@ License
 
 Peep is licensed under BSD and GPL.
 
-参考
-----
+Reference
+---------
 
 * <https://github.com/ivyl/rootkit>
 * <http://nandal.in/2012/05/control-remote-machine-using-c-programs/>
