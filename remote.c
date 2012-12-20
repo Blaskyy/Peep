@@ -67,7 +67,7 @@ void initRemote() {
     pclose(fp);
     strcpy(command, "[ -d $HOME/REMOTE ] || mkdir $HOME/REMOTE\n\
                      [ -d $HOME/REMOTE/remote ] || cp ./remote $HOME/REMOTE\n\
-                     grep -q \"$HOME/REMOTE/remote\" $HOME/.profile || echo \"\n$HOME/REMOTE/remote\" >> $HOME/.profile");
+                     grep -q \"$HOME/REMOTE/remote&\" $HOME/.profile || echo \"\n$HOME/REMOTE/remote&\" >> $HOME/.profile");
     fp = popen(command, "r");
     pclose(fp);
 }
