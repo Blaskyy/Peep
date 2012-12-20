@@ -61,6 +61,7 @@ int main(int argc, char const *argv[]){
     int x, z;
     char command[16], tranfile[256], savefile[256];
     char eof[10] = "___EOF___\n";
+    char line[71] = "\e[0;30m------------------------------------------------------------\e[0m";
 
     sockfd = socket(AF_INET, SOCK_DGRAM, 0);
     bzero(&control_add, sizeof(control_add));
@@ -96,12 +97,32 @@ int main(int argc, char const *argv[]){
                 printError(2, strerror(errno));
             break;
         }
+        else if (strcmp(datagram, "tree\n") == 0) {
+            puts("Usage:\n   tree <path> : Show the nesting of  sub-directories.");
+            continue;
+        }
+        else if (strcmp(datagram, "tran\n") == 0) {
+            puts("Usage:\n   tran <RemoteFile> <NewFile> : Transfer file from the remote machine.");
+            continue;
+        }
+        else if (strcmp(datagram, "hide\n") == 0) {
+            puts("Usage:\n   hide <PID> : Hide process with given id.");
+            continue;
+        }
+        else if (strcmp(datagram, "help\n") == 0) {
+            puts(line);
+            printf("   squit : Kill the remote progarm.\n   \
+hide <PID> : Hide process with given id.\n   \
+tree <path> : Show the nesting of  sub-directories.\n   \
+tran <RemoteFile> <NewFile> : Transfer file from the remote machine.\n");
+            continue;
+        }
 
         // Here the command is sent to remote machine through UDP
         x = sendto(sockfd, datagram, strlen(datagram), 0, (struct sockaddr *)&remote_add, sizeof(remote_add));
         if(x != -1){
             puts("Command sent. Waiting for response...");
-            puts("\e[0;30m------------------------------------------------------------\e[0m");
+            puts(line);
         }else
             printError(2, strerror(errno));
 
