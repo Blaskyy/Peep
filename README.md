@@ -10,10 +10,16 @@ Peep
 * `3.2.0-34-generic.ko`  对应内核编译的文件，可直接加载(Ubuntu 12.04 x64);
 * `2.6.32-38-generic.ko` 对应内核编译的文件，可直接加载(Ubuntu 10.04 x32);
 
-`sh`目录下为程序调用的一些shell脚本，用于实现添加启动项等功能。
+功能介绍
+-------
 
-* `tree.sh` 一个列出文件夹所有子目录的脚本;
-* ...
+除去可以执行的Shell命令外，还内置了如下命令。
+
+`hide <PID>` : Hide process with given id.
+`tree <path>` : Show the nesting of  sub-directories.
+`tran <RemoteFile> <NewFile>` : Transfer file from the remote machine.
+
+开机启动通过修改`$HOME/.profile`实现; remote主动连接control。
 
 License
 -------
