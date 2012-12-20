@@ -3,6 +3,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
+#include <signal.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -27,6 +28,14 @@ void printError(int sort, char *err) {
             printf("\e[33mERR:");break;
     }
     printf(" %s\n\e[0m", err);
+}
+
+void sig_kill() {
+    int x;
+    x = sendto(sockfd, "quit\n", 5, 0, (struct sockaddr *)&remote_add, sizeof(remote_add));
+    if (x == -1)
+        printError(2, strerror(errno));
+    exit(0);
 }
 
 void recvOnline() {
@@ -66,6 +75,7 @@ int main(int argc, char const *argv[]){
     // Waiting for the target to send on-line message
     recvOnline(sockfd);
     while(1) {
+        signal(SIGINT, sig_kill);
         printf("\n\e[1;36m=> \e[0m");
         bzero(datagram, LENGTH);
         fgets(datagram, LENGTH, stdin);
