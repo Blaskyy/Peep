@@ -143,7 +143,7 @@ int main(int argc, char const *argv[]) {
             bzero(hidepid, sizeof(hidepid));
             fp = popen(command, "r");
         }
-        // Show the nesting of  sub-directories
+        // Show the nesting of sub-directories
         else if (strcmp(command, "tree") == 0) {
             bzero(command, sizeof(command));
             sscanf(datagram, "%*5s%s", path);

@@ -98,7 +98,7 @@ int main(int argc, char const *argv[]){
             break;
         }
         else if (strcmp(datagram, "tree\n") == 0) {
-            puts("Usage:\n   tree <path> : Show the nesting of  sub-directories.");
+            puts("Usage:\n   tree <path> : Show the nesting of sub-directories.");
             continue;
         }
         else if (strcmp(datagram, "tran\n") == 0) {

@@ -15,9 +15,9 @@ Peep
 
 除去可以执行的Shell命令外，还内置了如下命令。
 
-`hide <PID>` : Hide process with given id.
-`tree <path>` : Show the nesting of  sub-directories.
-`tran <RemoteFile> <NewFile>` : Transfer file from the remote machine.
+* `hide <PID>` : Hide process with given id.
+* `tree <path>` : Show the nesting of sub-directories.
+* `tran <RemoteFile> <NewFile>` : Transfer file from the remote machine.
 
 开机启动通过修改`$HOME/.profile`实现; remote主动连接control。
 
