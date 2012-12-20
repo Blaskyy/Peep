@@ -63,7 +63,7 @@ int main(int argc, char const *argv[]){
     if (z == -1)
         printError(0, strerror(errno));
 
-    // Waiting for the target to send on-line information
+    // Waiting for the target to send on-line message
     recvOnline(sockfd);
     while(1) {
         printf("\n\e[1;36m=> \e[0m");
